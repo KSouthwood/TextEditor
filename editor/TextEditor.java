@@ -10,6 +10,8 @@ public class TextEditor extends JFrame {
 
     private JTextArea  textArea;
     private JTextField filename;
+    private JButton saveButton;
+    private JButton loadButton;
 
     public TextEditor() {
         setWindowProperties();
@@ -26,6 +28,7 @@ public class TextEditor extends JFrame {
     }
 
     private void addComponents() {
+        setJMenuBar(createMenuBar());
         add(createPanel(), BorderLayout.NORTH);
         add(createScrollPane(), BorderLayout.CENTER);
     }
@@ -65,7 +68,7 @@ public class TextEditor extends JFrame {
     }
 
     private JButton createLoadButton() {
-        JButton loadButton = new JButton("Load");
+        loadButton = new JButton("Load");
         loadButton.setName("LoadButton");
         loadButton.setPreferredSize(new Dimension(75, 30));
 
@@ -82,7 +85,7 @@ public class TextEditor extends JFrame {
     }
 
     private JButton createSaveButton() {
-        JButton saveButton = new JButton("Save");
+        saveButton = new JButton("Save");
         saveButton.setName("SaveButton");
         saveButton.setPreferredSize(new Dimension(75, 30));
 
@@ -95,5 +98,52 @@ public class TextEditor extends JFrame {
         });
 
         return saveButton;
+    }
+
+    private JMenuBar createMenuBar() {
+        JMenuBar jMenuBar = new JMenuBar();
+        jMenuBar.setMargin(new Insets(10, 10, 10, 10));
+        jMenuBar.add(createFileMenu());
+        return jMenuBar;
+    }
+
+    private JMenu createFileMenu() {
+        JMenu jMenu = new JMenu();
+        jMenu.setText("File");
+        jMenu.setName("MenuFile");
+
+        jMenu.add(menuItemLoad());
+        jMenu.add(menuItemSave());
+        jMenu.addSeparator();
+        jMenu.add(menuItemExit());
+
+        return jMenu;
+    }
+
+    private JMenuItem menuItemLoad() {
+        JMenuItem menuItem = new JMenuItem("Load");
+        menuItem.setName("MenuLoad");
+
+        menuItem.addActionListener(actionEvent -> loadButton.doClick());
+
+        return menuItem;
+    }
+
+    private JMenuItem menuItemSave() {
+        JMenuItem menuItem = new JMenuItem("Save");
+        menuItem.setName("MenuSave");
+
+        menuItem.addActionListener(actionEvent -> saveButton.doClick());
+
+        return menuItem;
+    }
+
+    private JMenuItem menuItemExit() {
+        JMenuItem menuItem = new JMenuItem("Exit");
+        menuItem.setName("MenuExit");
+
+        menuItem.addActionListener(actionEvent -> this.dispose());
+
+        return menuItem;
     }
 }
