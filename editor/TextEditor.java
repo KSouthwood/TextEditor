@@ -4,8 +4,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicBorders;
 import java.awt.*;
+import java.io.*;
 
 public class TextEditor extends JFrame {
+
+    private JTextArea  textArea;
+    private JTextField filename;
 
     public TextEditor() {
         setWindowProperties();
@@ -34,12 +38,12 @@ public class TextEditor extends JFrame {
     }
 
     private JTextArea createTextArea() {
-        JTextArea jTextArea = new JTextArea();
-        jTextArea.setName("TextArea");
-        jTextArea.setLineWrap(true);
-        jTextArea.setWrapStyleWord(true);
-        jTextArea.setBorder(BasicBorders.getTextFieldBorder());
-        return jTextArea;
+        textArea = new JTextArea();
+        textArea.setName("TextArea");
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setBorder(BasicBorders.getTextFieldBorder());
+        return textArea;
     }
 
     private JPanel createPanel() {
@@ -53,17 +57,27 @@ public class TextEditor extends JFrame {
     }
 
     private JTextField createJTextField() {
-        JTextField jTextField = new JTextField();
-        jTextField.setName("FilenameField");
-        jTextField.setPreferredSize(new Dimension(250, 30));
-        jTextField.setBorder(BasicBorders.getTextFieldBorder());
-        return jTextField;
+        filename = new JTextField();
+        filename.setName("FilenameField");
+        filename.setPreferredSize(new Dimension(250, 30));
+        filename.setBorder(BasicBorders.getTextFieldBorder());
+        return filename;
     }
 
     private JButton createLoadButton() {
         JButton loadButton = new JButton("Load");
         loadButton.setName("LoadButton");
         loadButton.setPreferredSize(new Dimension(75, 30));
+
+        loadButton.addActionListener(actionEvent -> {
+            try (BufferedReader file = new BufferedReader(new FileReader(filename.getText()))) {
+                textArea.read(file, null);
+            } catch (IOException e) {
+                System.out.println("Error: "  + e);
+                textArea.setText("");
+            }
+        });
+
         return loadButton;
     }
 
@@ -71,8 +85,15 @@ public class TextEditor extends JFrame {
         JButton saveButton = new JButton("Save");
         saveButton.setName("SaveButton");
         saveButton.setPreferredSize(new Dimension(75, 30));
+
+        saveButton.addActionListener(actionEvent -> {
+            try (BufferedWriter file = new BufferedWriter(new FileWriter(filename.getText()))) {
+                textArea.write(file);
+            } catch (IOException e) {
+                System.out.println("Error: " + e);
+            }
+        });
+
         return saveButton;
     }
-
-
 }
