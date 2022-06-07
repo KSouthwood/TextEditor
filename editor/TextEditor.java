@@ -9,30 +9,36 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TextEditor extends JFrame {
 
     JTextArea    textArea;
     JTextField   searchField;
     JFileChooser fileChooser;
-    private JButton loadButton;
-    private JButton saveButton;
-    private JButton searchButton;
-    private JButton previousButton;
-    private JButton nextButton;
+    private JButton   loadButton;
+    private JButton   saveButton;
+    private JButton   searchButton;
+    private JButton   previousButton;
+    private JButton   nextButton;
     private JCheckBox useRegex;
 
-    private final String filepath = "/projects/JetBrains Academy (Java)/Text Editor/Text " +
-                                    "Editor/task/src/editor/images/";
-    private final String openIconFilename          = filepath + "8664907_folder_open_document_icon.png";
-    private final String saveIconFilename          = filepath + "3671850_disk_save_icon.png";
-    private final String searchIconFilename        = filepath + "172546_search_icon.png";
-    private final String previousMatchIconFilename = filepath + "476327_arrow_circle_left_prev_previous_icon.png";
-    private final String nextMatchIconFilename     = filepath + "4829872_arrow_next_right_icon.png";
-    private final int    ICON_WIDTH                = 25;
-    private final int    ICON_HEIGHT               = 25;
-    private final int BUTTON_WIDTH = 30;
-    private final int BUTTON_HEIGHT = 30;
+    private final String        filepath                  = "/projects/JetBrains Academy (Java)/Text Editor/Text " +
+                                                            "Editor/task/src/editor/images/";
+    private final String        openIconFilename          = filepath + "8664907_folder_open_document_icon.png";
+    private final String        saveIconFilename          = filepath + "3671850_disk_save_icon.png";
+    private final String        searchIconFilename        = filepath + "172546_search_icon.png";
+    private final String        previousMatchIconFilename =
+            filepath + "476327_arrow_circle_left_prev_previous_icon.png";
+    private final String        nextMatchIconFilename     = filepath + "4829872_arrow_next_right_icon.png";
+    private final int           ICON_WIDTH                = 25;
+    private final int           ICON_HEIGHT               = 25;
+    private final int           BUTTON_WIDTH              = 30;
+    private final int           BUTTON_HEIGHT             = 30;
+    private       PerformSearch search;
 
     public TextEditor() {
         setWindowProperties();
@@ -93,7 +99,7 @@ public class TextEditor extends JFrame {
                                       e -> previousButton.doClick()));
         searchMenu.add(createMenuItem("Next Match", "MenuNextMatch", e -> nextButton.doClick()));
         searchMenu.add(createMenuItem("Use regular expressions", "MenuUseRegExp",
-                                      e -> System.out.println("Reg exp")));
+                                      e -> useRegex.doClick()));
         return searchMenu;
     }
 
@@ -178,11 +184,12 @@ public class TextEditor extends JFrame {
         searchButton = new JButton();
         searchButton.setName("StartSearchButton");
         searchButton.setPreferredSize(new Dimension(BUTTON_WIDTH, BUTTON_HEIGHT));
-        searchButton.addActionListener(e -> System.out.println("Start search"));
+        searchButton.addActionListener(new Search());
 
         try {
             searchButton.setIcon(new ImageIcon(ImageIO.read(new File(searchIconFilename))
-                                                      .getScaledInstance(ICON_WIDTH, ICON_HEIGHT, Image.SCALE_DEFAULT)));
+                                                      .getScaledInstance(ICON_WIDTH, ICON_HEIGHT,
+                                                                         Image.SCALE_DEFAULT)));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -194,7 +201,7 @@ public class TextEditor extends JFrame {
         previousButton = new JButton();
         previousButton.setName("PreviousMatchButton");
         previousButton.setPreferredSize(new Dimension(BUTTON_WIDTH, BUTTON_HEIGHT));
-        previousButton.addActionListener(e -> System.out.println("Previous match"));
+        previousButton.addActionListener(e -> search.previousSearchResult());
 
         try {
             previousButton.setIcon(new ImageIcon(ImageIO.read(new File(previousMatchIconFilename))
@@ -211,7 +218,7 @@ public class TextEditor extends JFrame {
         nextButton = new JButton();
         nextButton.setName("NextMatchButton");
         nextButton.setPreferredSize(new Dimension(BUTTON_WIDTH, BUTTON_HEIGHT));
-        nextButton.addActionListener(e -> System.out.println("Next match"));
+        nextButton.addActionListener(e -> search.nextSearchResult());
 
         try {
             nextButton.setIcon(new ImageIcon(ImageIO.read(new File(nextMatchIconFilename))
@@ -235,6 +242,10 @@ public class TextEditor extends JFrame {
 
     void addSaveListener(final ActionListener actionListener) {
         saveButton.addActionListener(actionListener);
+    }
+
+    String getSearchText() {
+        return searchField.getText();
     }
 
     class LoadAction implements ActionListener {
@@ -265,6 +276,101 @@ public class TextEditor extends JFrame {
                     System.out.println("Error: " + exception);
                 }
             }
+        }
+    }
+
+    class Search implements ActionListener {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            search = new PerformSearch(textArea, getSearchText(), useRegex.isSelected());
+            search.execute();
+        }
+    }
+
+    static class PerformSearch extends SwingWorker<Void, MatchPair> {
+        private       int                  matchIndex     = 0;
+        private final boolean              useRegex;
+        private final String               searchTerm;
+        private final String               searchText;
+        private final ArrayList<MatchPair> matchesFound   = new ArrayList<>();
+        private final JTextArea searchTextArea;
+
+        PerformSearch(final JTextArea textArea, final String searchTerm, final boolean regex) {
+            this.searchTextArea = textArea;
+            this.searchText = textArea.getText();
+            this.searchTerm = searchTerm;
+            this.useRegex = regex;
+            setProgress(0);
+        }
+
+        @Override
+        public Void doInBackground() {
+            Matcher matcher;
+            if (!useRegex) {
+                matcher = Pattern.compile(searchTerm, Pattern.LITERAL).matcher(searchText);
+            } else {
+                matcher = Pattern.compile(searchTerm).matcher(searchText);
+            }
+
+            while (matcher.find()) {
+                publish(new MatchPair(matcher.start(), matcher.end()));
+                setProgress(100 * matcher.start() / searchText.length());
+            }
+
+            setProgress(100);
+
+            return null;
+        }
+
+        @Override
+        protected void process(List<MatchPair> chunks) {
+            matchesFound.addAll(chunks);
+        }
+
+        @Override
+        protected void done() {
+            if (matchesFound.size() > 0) {
+                highlightMatch();
+            }
+        }
+
+        void nextSearchResult() {
+            if (matchesFound.size() != 0) {
+                matchIndex++;
+                if (matchIndex == matchesFound.size()) {
+                    matchIndex = 0;
+                }
+                highlightMatch();
+            }
+        }
+
+        void previousSearchResult() {
+            if (matchesFound.size() != 0)
+            {
+                matchIndex--;
+                if (matchIndex < 0) {
+                    matchIndex = matchesFound.size() - 1;
+                }
+                highlightMatch();
+            }
+        }
+
+        private void highlightMatch() {
+            var textToHighlight = matchesFound.get(matchIndex);
+            searchTextArea.setCaretPosition(textToHighlight.start);
+            searchTextArea.moveCaretPosition(textToHighlight.end);
+            searchTextArea.grabFocus();
+        }
+    }
+
+    static class MatchPair {
+        int start;
+        int end;
+
+        MatchPair(final int start, final int end) {
+            this.start = start;
+            this.end = end;
         }
     }
 
